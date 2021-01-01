@@ -1,0 +1,60 @@
+#标识配置文件名称
+spring:
+  application:
+    name: tanhua-sso
+
+#dataSources
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://192.168.31.81:3306/mytanhua?useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false
+    username: root
+    password: root
+#redis
+  redis:
+    jedis:
+      pool:
+        max-wait: 5000ms
+        max-idle: 100
+        min-idle: 10
+    timeout: 10s
+    cluster:
+      #redis集群
+      nodes: 192.168.31.81:6379,192.168.31.81:6380,192.168.31.81:6381
+      max-redirects: 5
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+#程序向外暴露的端口
+server:
+  port: 18080
+
+#mybatis-plus
+#枚举扫包
+mybatis-plus:
+  type-enums-package: com.tanhua.sso.enums
+  global-config:
+    db-config:
+      #表名前缀
+      table-prefix: tb_
+      #实体类id增长策略--自增
+      id-type: auto
+
+#RocketMQ
+rocketmq:
+  name-server: 192.168.31.81:9876
+  producer:
+    group: tanhua
+
+#tocket--盐值
+jwt.secret: 76bd425b6f29f7fcc2e0bfc286043df1
+
+
+
+
+#虹软相关配置
+arcsoft:
+    appid: CPkpf4yyTFcyy6pLk2TzvDbr9R8frwuSe4k3CtBV6T74
+    sdkKey: 5QrEKtxAB1Gc4WkDJzkL6ixRq6jZiPBPdV1771CZJmMW
+    libPath: F:\\it_soft\\ArcSoft_ArcFace_Java_Windows_x64_V3.0\\libs\\WIN64
+
