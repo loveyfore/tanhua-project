@@ -58,3 +58,16 @@ arcsoft:
     sdkKey: 5QrEKtxAB1Gc4WkDJzkL6ixRq6jZiPBPdV1771CZJmMW
     libPath: F:\\it_soft\\ArcSoft_ArcFace_Java_Windows_x64_V3.0\\libs\\WIN64
 
+#dubbo 配置
+#dubbo:
+#  scan:
+#    base-packages: com.tanhua.sso.api
+#  application:
+#    name: dubbo-provider-tanhua
+#  protocol:
+#    name: dubbo
+#    port: 20881
+#  registry:
+#    address: zookeeper://192.168.31.81:2181
+#    client: zkclientc
+#    timeout: 60000

@@ -9,7 +9,7 @@ import com.baomidou.mybatisplus.core.enums.IEnum;
  * 枚举标识用户的性别
  */
 
-public enum  SexEnum implements IEnum<Integer> {
+public enum SexEnum implements IEnum<Integer> {
 
 
 
@@ -23,7 +23,7 @@ public enum  SexEnum implements IEnum<Integer> {
     private String desc;
 
 
-    SexEnum(int value,String desc){
+    SexEnum(int value, String desc){
         this.value=value;
         this.desc=desc;
     }

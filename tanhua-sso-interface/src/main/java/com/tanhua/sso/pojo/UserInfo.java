@@ -1,6 +1,5 @@
 package com.tanhua.sso.pojo;
 
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.tanhua.sso.enums.SexEnum;
 import lombok.AllArgsConstructor;
 import lombok.Data;
