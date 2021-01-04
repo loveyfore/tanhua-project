@@ -1,6 +1,8 @@
 package com.tanhua.server.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tanhua.server.pojo.RecommendUser;
+import com.tanhua.server.utils.CacheUtils;
 import com.tanhua.server.vo.PageInfo;
 import com.tanhua.server.vo.PageResult;
 import com.tanhua.server.vo.TodayBest;
@@ -11,6 +13,7 @@ import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -31,9 +34,19 @@ public class TodayBestService {
     @Autowired
     private RecommendUserService recommendUserService;
 
+    @Autowired
+    private RedisTemplate<String,String> redisTemplate;
+
+    @Autowired
+    private static final ObjectMapper OBJECT_MAPPER =new ObjectMapper();
+
     /*默认显示的佳人*/
     @Value("${tanhua.sso.default.user}")
     private Long defaultUserId;
+
+    /*缓存工具类*/
+    @Autowired
+    private CacheUtils cacheUtils;
 
 
     /**
@@ -102,6 +115,26 @@ public class TodayBestService {
      * @return
      */
     public PageResult recommendation(String token, RecommendUserQueryParam queryParam){
+
+
+
+        /**
+         * 缓存优化
+         * 1.缓存中获取数据,得到直接返回
+         * 2.没有就执行逻辑业务,在将查询结果存储到缓存中--缓存设置过期时间10分钟
+         */
+
+//        try {
+//            String key="TodayBestService_recommendation_"+token+OBJECT_MAPPER.writeValueAsString(queryParam);
+//            PageResult cache = cacheUtils.getCache(key, PageResult.class);
+//            if (cache!=null){
+//                return cache;
+//            }
+//        } catch (Exception e){
+//            e.printStackTrace();
+//        }
+
+
         /**
          * 1.token认证
          * 2.User 调用dubbo服务,得到List<RecommendUser>
@@ -181,6 +214,16 @@ public class TodayBestService {
         }
 
         pageResult.setItems(todayBestList);
+
+//        /*结果放入缓存*/
+//        try {
+//            String key="TodayBestService_recommendation_"+token+OBJECT_MAPPER.writeValueAsString(queryParam);
+//            /*使用缓存工具类,过期时间10分钟*/
+//            cacheUtils.putCache(key,pageResult,Duration.ofMinutes(10));
+//        } catch (Exception e){
+//            e.printStackTrace();
+//        }
+
         return pageResult;
 
 

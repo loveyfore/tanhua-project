@@ -1,6 +1,7 @@
 package com.tanhua.server.controller;
 
 import com.tanhua.server.service.TodayBestService;
+import com.tanhua.server.utils.Cache;
 import com.tanhua.server.vo.PageResult;
 import com.tanhua.server.vo.TodayBest;
 import com.tanhua.server.vo.params.RecommendUserQueryParam;
@@ -56,6 +57,7 @@ public class TodayBestController {
      * @return
      */
     @GetMapping("recommendation")
+    @Cache(time = 80)
     public ResponseEntity<Object> recommendation(@RequestHeader("Authorization")String token,
                                                  RecommendUserQueryParam queryParam){
         try {
