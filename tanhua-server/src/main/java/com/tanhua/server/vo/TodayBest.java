@@ -10,10 +10,28 @@ import lombok.NoArgsConstructor;
 public class TodayBest {
 
     private Integer id;
+    /**
+     * 头像
+     */
     private String avatar;
+    /**
+     * 昵称
+     */
     private String nickname;
-    private String gender; //性别 man woman
+    /**
+     * 性别 man woman
+     */
+    private String gender;
+    /**
+     * 年龄
+     */
     private Integer age;
+    /**
+     * 标签
+     */
     private String[] tags;
-    private Long fateValue; //缘分值
+    /**
+     * 缘分值
+     */
+    private Long fateValue;
 }

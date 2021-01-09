@@ -3,6 +3,7 @@ package com.tanhua.server.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tanhua.server.pojo.RecommendUser;
 import com.tanhua.server.utils.CacheUtils;
+import com.tanhua.server.utils.UserThreadLocal;
 import com.tanhua.server.vo.PageInfo;
 import com.tanhua.server.vo.PageResult;
 import com.tanhua.server.vo.TodayBest;
@@ -51,10 +52,9 @@ public class TodayBestService {
 
     /**
      * 今日佳人
-     * @param token
      * @return
      */
-    public TodayBest todayBest(String token){
+    public TodayBest todayBest(){
         //每个service 都有自己的职责范围
         /**
          * 1.token 去sso系统 token认证
@@ -66,10 +66,10 @@ public class TodayBestService {
          */
 
         //1
-        User user = userService.queryToken(token);
-        if (user==null){
-            return null;
-        }
+        User user = UserThreadLocal.get();
+//        if (user==null){
+//            return null;
+//        }
 
         //2,3
         RecommendUser recommendUser = recommendUserService.queryMaxScore(user.getId());
@@ -110,11 +110,10 @@ public class TodayBestService {
 
     /**
      * 推荐列表
-     * @param token
      * @param queryParam
      * @return
      */
-    public PageResult recommendation(String token, RecommendUserQueryParam queryParam){
+    public PageResult recommendation(RecommendUserQueryParam queryParam){
 
 
 
@@ -144,10 +143,10 @@ public class TodayBestService {
          */
         log.info("QueryParam:{}",queryParam);
         //1
-        User user = userService.queryToken(token);
-        if (user==null){
-            return null;
-        }
+        User user = UserThreadLocal.get();
+//        if (user==null){
+//            return null;
+//        }
 
         //2
         Long userId = user.getId();

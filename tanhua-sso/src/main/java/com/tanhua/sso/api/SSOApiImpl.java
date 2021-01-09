@@ -36,6 +36,7 @@ public class SSOApiImpl implements SSOApi {
     }
 
     /**
+     * 根据用户id查询用户详细信息
      * 查询佳人详细信息
      * @param userId
      * @return

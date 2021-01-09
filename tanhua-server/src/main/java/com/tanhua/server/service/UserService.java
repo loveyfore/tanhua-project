@@ -22,7 +22,7 @@ public class UserService {
 
 
     /**
-     * 验证用户token合法性,放回token中存储的用户信息
+     * 验证用户token合法性,反回token中存储的用户信息
      * @param token
      * @return
      */
@@ -32,7 +32,8 @@ public class UserService {
 
 
     /**
-     * 查询佳人详细信息
+     * 根据用户id查询用户详细信息
+     * 可用于查询佳人详细信息
      * @param userId
      * @return
      */
@@ -42,7 +43,7 @@ public class UserService {
 
 
     /**
-     * 根据id集合,查询推荐列表中的用户详细数据
+     * 根据id集合,按条件筛选数据  //TODO 改功能未实现 ,sso层查询条件已经注释
      * @param userIdList
      * @param age
      * @param city
@@ -61,5 +62,16 @@ public class UserService {
             sex = StringUtils.equals(gender,"man") ? 1:2;
         }
         return ssoApi.queryUserInfoByUserIdList(userIdList,age,city,education,sex);
+    }
+
+
+    /**
+     * 方法重载
+     * 根据id集合,查询用户详细信息
+     * @param userIdList
+     * @return
+     */
+    public List<UserInfo> queryUserInfoByUserIdList(List<Long> userIdList) {
+        return this.queryUserInfoByUserIdList(userIdList, null, null, null, null);
     }
 }

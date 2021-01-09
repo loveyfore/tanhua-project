@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @Author Administrator
@@ -237,8 +238,13 @@ public class UserService {
             if (StringUtils.isEmpty(userJson)){
                 return null;
             }
+            User user = OBJECT_MAPPER.readValue(userJson, User.class);
 
-            return OBJECT_MAPPER.readValue(userJson,User.class);
+            /*当用户发起请求,为用户做续期的操作,解决频繁的登录的操作*/
+            redisTemplate.expire("TOKEN_" + token,7, TimeUnit.DAYS);
+
+
+            return user;
         } catch (ExpiredJwtException e) {
             /*如果token过期,则会抛这个异常*/
             log.info("token以过期!");

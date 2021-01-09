@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,11 +31,11 @@ public class TodayBestController {
      * @return
      */
     @GetMapping("todayBest")
-    public ResponseEntity<Object> todayBest(@RequestHeader("Authorization")String token){
+    public ResponseEntity<Object> todayBest(){
 
         try {
 
-            TodayBest todayBest = todayBestService.todayBest(token);
+            TodayBest todayBest = todayBestService.todayBest();
             if (todayBest!=null){
                 return ResponseEntity.ok(todayBest);
             }
@@ -53,16 +52,14 @@ public class TodayBestController {
      * GET
      * 推荐朋友
      * /tanhua/recommendation
-     * @param token
      * @return
      */
     @GetMapping("recommendation")
     @Cache(time = 80)
-    public ResponseEntity<Object> recommendation(@RequestHeader("Authorization")String token,
-                                                 RecommendUserQueryParam queryParam){
+    public ResponseEntity<Object> recommendation(RecommendUserQueryParam queryParam){
         try {
 
-            PageResult pageResult = todayBestService.recommendation(token, queryParam);
+            PageResult pageResult = todayBestService.recommendation(queryParam);
             return ResponseEntity.ok(pageResult);
 
         } catch (Exception e) {

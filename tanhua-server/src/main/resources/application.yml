@@ -1,0 +1,18 @@
+spring:
+  #redis
+  redis:
+    jedis:
+      pool:
+        max-wait: 5000ms
+        max-idle: 100
+        min-idle: 10
+    timeout: 10s
+    cluster:
+      #redis集群
+      nodes: 192.168.31.81:6379,192.168.31.81:6380,192.168.31.81:6381
+      max-redirects: 5
+  #请求文件上传大小配置
+  servlet:
+    multipart:
+      max-file-size: 30MB
+      max-request-size: 30MB

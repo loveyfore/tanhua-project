@@ -2,12 +2,14 @@ package com.tanhua.server.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Collections;
 import java.util.List;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class PageInfo<T> implements java.io.Serializable {
 
     private static final long serialVersionUID = -2105385689859184204L;
