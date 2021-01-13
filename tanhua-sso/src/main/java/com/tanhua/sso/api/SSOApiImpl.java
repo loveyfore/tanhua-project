@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.tanhua.sso.mapper.UserInfoMapper;
 import com.tanhua.sso.pojo.User;
 import com.tanhua.sso.pojo.UserInfo;
+import com.tanhua.sso.service.HuanXinService;
 import com.tanhua.sso.service.UserService;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -22,6 +24,9 @@ public class SSOApiImpl implements SSOApi {
 
     @Autowired
     private UserInfoMapper  userInfoMapper;
+
+    @Autowired
+    private HuanXinService huanXinService;
 
 
 
@@ -78,6 +83,36 @@ public class SSOApiImpl implements SSOApi {
         //            queryWrapper.eq("sex",sex);
         //        }
 
+        return userInfoMapper.selectList(queryWrapper);
+    }
+
+    /**
+     * 添加环信联系人,建立好友关系
+     * @param userId 当前用户id
+     * @param friendId 朋友用户id
+     * @return
+     */
+    @Override
+    public Boolean addHuanXinContacts(Long userId, Long friendId) {
+
+        return huanXinService.addHuanXinContacts(userId,friendId);
+    }
+
+    /**
+     * 查询用户详细信息,以昵称模糊查询
+     * @param userIdList 用户id集合
+     * @param keyword 模糊查询字段
+     * @return
+     */
+    @Override
+    public List<UserInfo> queryUserInfoLikeNickName(List<Long> userIdList, String keyword) {
+        /*构建查询条件*/
+        QueryWrapper<UserInfo> queryWrapper=new QueryWrapper<>();
+        queryWrapper.in("user_id",userIdList);
+        if (StringUtils.isNotEmpty(keyword)){
+            /*如果该字段不为空才执行对昵称的模糊查询操作*/
+            queryWrapper.like("nick_name",keyword);
+        }
         return userInfoMapper.selectList(queryWrapper);
     }
 }

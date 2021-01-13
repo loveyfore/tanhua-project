@@ -20,6 +20,10 @@ public class Video implements java.io.Serializable {
      */
     private ObjectId id;
     /**
+     * Long类型的动态id,用于推荐引擎使用  spark
+     */
+    private Long vid;
+    /**
      * 用户id
      */
     private Long userId;

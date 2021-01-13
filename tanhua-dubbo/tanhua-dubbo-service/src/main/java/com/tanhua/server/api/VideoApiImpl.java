@@ -4,10 +4,12 @@ import com.alibaba.dubbo.config.annotation.Service;
 import com.mongodb.client.result.DeleteResult;
 import com.tanhua.server.pojo.FollowUser;
 import com.tanhua.server.pojo.Video;
+import com.tanhua.server.service.IDService;
 import com.tanhua.server.vo.PageInfo;
 import jdk.nashorn.internal.ir.ReturnNode;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -26,19 +28,26 @@ public class VideoApiImpl implements VideoApi {
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    @Autowired
+    private IDService idService;
+
     /**
      * 小视频-发布保存
      * @param video
      * @return
      */
     @Override
-    public Boolean saveVideo(Video video) {
+    public String saveVideo(Video video) {
         /*对用户做校验*/
         if (video.getUserId()==null){
-            return false;
+            return null;
         }
+
+        /*添加自增长id,为推荐引擎使用*/
+        video.setVid(idService.createId("VIDEO",video.getId().toHexString()));
+
         mongoTemplate.save(video);
-        return true;
+        return video.getId().toHexString();
     }
 
     /**
@@ -111,5 +120,35 @@ public class VideoApiImpl implements VideoApi {
             e.printStackTrace();
         }
         return false;
+    }
+
+    /**
+     * 根据视频id查询
+     * @param publishId
+     * @return
+     */
+    @Override
+    public Video queryVideoById(String publishId) {
+        Query query = Query.query(Criteria.where("id").is(new ObjectId(publishId)));
+        return mongoTemplate.findOne(query,Video.class);
+    }
+
+    /**
+     * 根据vid集合查询详视频数据
+     * @param vidList
+     * @return
+     */
+    @Override
+    public PageInfo<Video> queryVideoByVid(List<Long> vidList) {
+        PageInfo<Video> pageInfo = new PageInfo<>();
+        pageInfo.setPageNum(0);
+        pageInfo.setPageSize(0);
+        pageInfo.setTotal(0);
+
+        Query query =Query.query(Criteria.where("vid").in(vidList)).with(Sort.by(Sort.Order.desc("created")));
+
+        pageInfo.setRecords(mongoTemplate.find(query,Video.class));
+
+        return pageInfo;
     }
 }

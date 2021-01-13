@@ -4,6 +4,8 @@ import com.tanhua.server.pojo.Comment;
 import com.tanhua.server.pojo.Publish;
 import com.tanhua.server.vo.PageInfo;
 
+import java.util.List;
+
 
 public interface QuanZiApi {
 
@@ -13,7 +15,7 @@ public interface QuanZiApi {
      * @param publish
      * @return
      */
-    boolean savePublish(Publish publish);
+    String savePublish(Publish publish);
 
     /**
      * 查询当前用户的好友动态
@@ -70,4 +72,28 @@ public interface QuanZiApi {
      * @return
      */
     PageInfo<Comment> queryCommentList(String publishId,Integer pageNum,Integer pageSize);
+
+    /**
+     * 根据id去查询评论
+     * @param publishId
+     * @return
+     */
+    Comment queryCommentById(String publishId);
+
+    /**
+     * 根据当前用户id查询该用户下所有,被点赞,评论,喜欢的作品(动态,小视频..) 的详细信息  --分页
+     * @param userId
+     * @param type
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    PageInfo<Comment> queryCommentListByUser(Long userId, Integer type, Integer pageNum, Integer pageSize);
+
+    /**
+     * 根据pid集合去查询动态数据
+     * @param pidList
+     * @return
+     */
+    PageInfo<Publish> queryPublishByPid(List<Long> pidList);
 }

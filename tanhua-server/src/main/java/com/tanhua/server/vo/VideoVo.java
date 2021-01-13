@@ -78,4 +78,17 @@ public class VideoVo {
 
         this.cover=picUrl;
     }
+
+    /**
+     * 方法用于填充头像的访问地址的拼接,库里存的是URI,要将地址拼接伟URL否则无法访问
+     * @param urlPrefix
+     * @param logoUrl
+     */
+    public void fillAvatar(String urlPrefix, String logoUrl) {
+        if (!logoUrl.startsWith("http")){
+            logoUrl=urlPrefix+logoUrl;
+        }
+
+        this.avatar=logoUrl;
+    }
 }

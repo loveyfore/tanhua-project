@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.tools.doclint.Checker;
 import com.tanhua.sso.config.AliyunConfig;
 import com.tanhua.sso.enums.SexEnum;
 import com.tanhua.sso.mapper.UserInfoMapper;
@@ -80,6 +81,12 @@ public class UserService {
     @Autowired
     private AliyunConfig aliyunConfig;
 
+    @Autowired
+    private HuanXinService huanXinService;
+
+    @Autowired
+    private ThreadService threadService;
+
     /**
      * 登录验证
      * 验证码校验,失败返回错误信息
@@ -102,7 +109,7 @@ public class UserService {
             return new Result(false,"验证码错误!",null);
         }
 
-        /*登录结束,判断用户时新用户还是老用户*/
+        /*登录结束,判断用户时新用户还是老用户--默认老用户*/
         boolean isNew=false;
 
         /*构造查询条件*/
@@ -117,6 +124,11 @@ public class UserService {
             user.setPassword(DigestUtils.md5Hex("test-password"));
             userMapper.insert(user);
             isNew=true;
+
+            /*针对新用户取注册环信*/
+            log.info("isNewUserId:{}",user.getId());
+            huanXinService.register(user.getId());
+
         }
 
         Long userId = user.getId();
@@ -157,6 +169,8 @@ public class UserService {
         resultMap.put("isNew",isNew);
 
         /*为不影响登录,使用多线程解决登录成功日志消息的发送*/
+        threadService.sendMQ(user);
+
 
 
         return new Result(true,"OK",resultMap);
@@ -180,7 +194,8 @@ public class UserService {
         log.info("uploadResult----->{}",upload);
         if ("done".equals(upload.getStatus())){
             try {
-                boolean flag = faceEngineService.checkIsPortrait(file.getBytes());
+                //boolean flag = faceEngineService.checkIsPortrait(file.getBytes());
+                boolean flag=true;   //TODO 为测试方便暂时砍掉人像验证
                 /*如果是人像,存入数据库*/
                 if (flag){
                     QueryWrapper<UserInfo> queryWrapper=new QueryWrapper<>();
@@ -211,7 +226,7 @@ public class UserService {
                     
                 }
                 return flag;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -285,6 +300,16 @@ public class UserService {
             userInfo.setCity(city);
             /*这里是枚举类型,使用三元运算符判断*/
             userInfo.setSex(StringUtils.equals(gender, "man") ? SexEnum.MAN : SexEnum.WOMAN);
+
+            /*暂时写死数据  //TODO --*/
+            userInfo.setTags("单身,本科,年龄相仿");
+            userInfo.setAge(20);
+            userInfo.setEdu("本科");
+            userInfo.setIndustry("计算机行业");
+            userInfo.setIncome("40");
+            userInfo.setMarriage("未婚");
+
+            userInfoMapper.insert(userInfo);
         }else {
             /*更新*/
             userInfo.setNickName(nickname);

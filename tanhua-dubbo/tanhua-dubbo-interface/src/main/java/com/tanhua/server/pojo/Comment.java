@@ -21,14 +21,37 @@ public class Comment implements java.io.Serializable{
 
     private ObjectId id;
 
-    private ObjectId publishId; //发布id
-    private Integer commentType; //评论类型，1-点赞，2-评论，3-喜欢
-    private String content; //评论内容
-    private Long userId; //评论人
-
-    private Boolean isParent = false; //是否为父节点，默认是否
-    private ObjectId parentId; // 父节点id
-
-    private Long created; //发表时间
+    /**
+     * 发布id
+     */
+    private ObjectId publishId;
+    /**
+     * 评论类型，1-点赞，2-评论，3-喜欢
+     */
+    private Integer commentType;
+    /**
+     * 评论内容
+     */
+    private String content;
+    /**
+     * 评论人
+     */
+    private Long userId;
+    /**
+     * 是否为父节点，默认是否
+     */
+    private Boolean isParent = false;
+    /**
+     * 父节点id
+     */
+    private ObjectId parentId;
+    /**
+     * 发表时间
+     */
+    private Long created;
+    /**
+     * 动态,小视频,评论的拥有者
+     */
+    private Long publishUserId;
 
 }

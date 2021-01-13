@@ -13,6 +13,7 @@
         <module>tanhua-server</module>
         <module>tanhua-dubbo</module>
         <module>tanhua-sso-interface</module>
+        <module>tanhua-recommend</module>
     </modules>
 
     <parent>

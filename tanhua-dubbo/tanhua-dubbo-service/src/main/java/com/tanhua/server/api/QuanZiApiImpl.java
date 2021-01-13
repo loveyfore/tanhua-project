@@ -2,6 +2,7 @@ package com.tanhua.server.api;
 
 import com.alibaba.dubbo.config.annotation.Service;
 import com.tanhua.server.pojo.*;
+import com.tanhua.server.service.IDService;
 import com.tanhua.server.vo.CommentTypeEnum;
 import com.tanhua.server.vo.PageInfo;
 import org.bson.types.ObjectId;
@@ -26,8 +27,14 @@ public class QuanZiApiImpl implements QuanZiApi {
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    @Autowired
+    private VideoApi videoApi;
+
+    @Autowired
+    private IDService idService;
+
     @Override
-    public boolean savePublish(Publish publish) {
+    public String savePublish(Publish publish) {
         /**
          * 1.写入发布表
          * 2.写入用户表
@@ -39,7 +46,7 @@ public class QuanZiApiImpl implements QuanZiApi {
         * */
         Long userId = publish.getUserId();
         if (userId==null){
-            return false;
+            return null;
         }
 
         //1
@@ -48,6 +55,10 @@ public class QuanZiApiImpl implements QuanZiApi {
         publish.setCreated(create);
         publish.setId(ObjectId.get());
         publish.setSeeType(1);
+
+        /*添加自增长id,为推荐引擎使用*/
+        publish.setPid(idService.createId("PUBLISH",publish.getId().toHexString()));
+
         mongoTemplate.save(publish);
 
         //2
@@ -73,7 +84,7 @@ public class QuanZiApiImpl implements QuanZiApi {
             mongoTemplate.save(timeLine,"quanzi_time_line_"+user.getFriendId());
         }
 
-        return true;
+        return publish.getId().toHexString();
     }
 
 
@@ -96,10 +107,6 @@ public class QuanZiApiImpl implements QuanZiApi {
             /*好友动态*/
             collectionName = "quanzi_time_line_" + userId;
         }
-
-
-
-
 
 
         /*分页查询对象--将当前用户的时间线表按日期的降序排序--需要注意mongoDB的分页索引是从0开始的*/
@@ -158,6 +165,26 @@ public class QuanZiApiImpl implements QuanZiApi {
 
         /*如果没有记录,为该用户创建*/
         Comment comment = new Comment();
+
+
+        /*查询该条动态的拥有者  分别去动态,视频,评论去查询该拥有者*/
+        Publish publish = this.queryPublishById(publishId);
+        if (publish!=null){
+            comment.setPublishUserId(publish.getUserId());
+        }else {
+            Video video= videoApi.queryVideoById(publishId);
+            if (video!=null){
+                comment.setPublishUserId(video.getUserId());
+            }else {
+                Comment comment1= this.queryCommentById(publishId);
+                if (comment1!=null){
+                    comment.setPublishUserId(comment1.getUserId());
+                }
+            }
+        }
+
+
+
         comment.setContent(content);
         comment.setCommentType(commentType);
         comment.setUserId(userId);
@@ -249,6 +276,65 @@ public class QuanZiApiImpl implements QuanZiApi {
         pageInfo.setPageSize(pageSize);
         pageInfo.setTotal(this.queryCommentCount(publishId,CommentTypeEnum.COMMENT.getCode()).intValue());
         pageInfo.setRecords(comments);
+        return pageInfo;
+    }
+
+    /**
+     * 根据id查询评论
+     * @param publishId
+     * @return
+     */
+    @Override
+    public Comment queryCommentById(String publishId) {
+        Query query=Query.query(Criteria.where("id").is(new ObjectId(publishId)));
+
+        return mongoTemplate.findOne(query,Comment.class);
+    }
+
+    /**
+     * 根据当前用户id查询该用户下所有,被点赞,评论,喜欢的作品(动态,小视频..) 的详细信息  --分页
+     * @param userId
+     * @param commentType
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    @Override
+    public PageInfo<Comment> queryCommentListByUser(Long userId, Integer commentType, Integer pageNum, Integer pageSize) {
+
+        PageRequest pageRequest = PageRequest.of(pageNum-1,pageSize,Sort.by(Sort.Order.asc("created")));
+        Query query = Query.query(
+                Criteria.where("publishUserId")
+                        .is(userId)
+                        .and("commentType")
+                        .is(commentType))
+                .with(pageRequest);
+
+        List<Comment> commentList = this.mongoTemplate.find(query, Comment.class);
+
+        PageInfo<Comment> pageInfo = new PageInfo<>();
+        pageInfo.setPageNum(pageNum);
+        pageInfo.setPageSize(pageSize);
+        pageInfo.setRecords(commentList);
+        pageInfo.setTotal(0); //暂不提供总数
+        return pageInfo;
+    }
+
+    /**
+     * 根据pid集合查询动态的详细数据
+     * @param pidList
+     * @return
+     */
+    @Override
+    public PageInfo<Publish> queryPublishByPid(List<Long> pidList) {
+        PageInfo<Publish> pageInfo = new PageInfo<>();
+        pageInfo.setPageNum(0);
+        pageInfo.setPageSize(0);
+        pageInfo.setTotal(0);
+
+        Query query=new Query(Criteria.where("pid").in(pidList)).with(Sort.by(Sort.Order.desc("created")));
+        pageInfo.setRecords(mongoTemplate.find(query,Publish.class));
+
         return pageInfo;
     }
 }

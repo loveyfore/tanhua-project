@@ -74,4 +74,24 @@ public class UserService {
     public List<UserInfo> queryUserInfoByUserIdList(List<Long> userIdList) {
         return this.queryUserInfoByUserIdList(userIdList, null, null, null, null);
     }
+
+    /**
+     * 环信好友添加 好友建立关系
+     * @param userId
+     * @param friendId
+     * @return
+     */
+    public Boolean addHuanXinContacts(Long userId,Long friendId){
+        return ssoApi.addHuanXinContacts(userId,friendId);
+    }
+
+    /**
+     * 模糊-查询用户UserInfo详细信息
+     * @param userIdList
+     * @param keyword
+     * @return
+     */
+    List<UserInfo> queryUserInfoLikeNickName(List<Long> userIdList,String keyword){
+        return ssoApi.queryUserInfoLikeNickName(userIdList,keyword);
+    }
 }

@@ -1,6 +1,7 @@
 package com.tanhua.server.service;
 
 import com.alibaba.dubbo.common.utils.CollectionUtils;
+import com.alibaba.dubbo.common.utils.Log;
 import com.alibaba.dubbo.config.annotation.Reference;
 import com.tanhua.server.api.QuanZiApi;
 import com.tanhua.server.config.AliyunConfig;
@@ -10,6 +11,7 @@ import com.tanhua.server.utils.UserThreadLocal;
 import com.tanhua.server.vo.*;
 import com.tanhua.sso.pojo.User;
 import com.tanhua.sso.pojo.UserInfo;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,6 +25,7 @@ import java.util.*;
  * @create 2021/1/3 22:24
  */
 @Service
+@Log4j2
 public class MovementsService {
 
     /*远程注入消费*/
@@ -65,6 +68,7 @@ public class MovementsService {
 
     /**
      * 保存发布动态
+     *
      * @param textContent
      * @param location
      * @param longitude
@@ -72,11 +76,11 @@ public class MovementsService {
      * @param multipartFiles
      * @return
      */
-    public boolean save(String textContent,
-                        String location,
-                        String longitude,
-                        String latitude,
-                        MultipartFile[] multipartFiles) {
+    public String save(String textContent,
+                       String location,
+                       String longitude,
+                       String latitude,
+                       MultipartFile[] multipartFiles) {
         //查询当前的登录用户信息
         User user = UserThreadLocal.get();
 //        if (null == user) {
@@ -105,20 +109,53 @@ public class MovementsService {
 
     /**
      * 查询好友动态
+     *
      * @param pageNum
      * @param pageSize
      * @param isRecommend 该条件用于判单是查询好友动态还是推荐动态
      * @return
      */
-    public PageResult queryPublishList(Integer pageNum, Integer pageSize,boolean isRecommend) {
+    public PageResult queryPublishList(Integer pageNum, Integer pageSize, boolean isRecommend) {
 
         //查询当前的登录用户信息
         User user = UserThreadLocal.get();
 
-        /*根据isRecommend 判断查询好友动态和推荐动态*/
-        PageInfo<Publish> pageInfo = quanZiApi.queryPublishList(user.getId(), pageNum, pageSize,isRecommend);
+        PageInfo<Publish> pageInfo =new PageInfo<>();
+
+
+        /*从redis中获取spark运算结果,没有的话还是远程调用*/
+        if (isRecommend) {
+            /*推荐列表,获取推荐pid列表*/
+            String pidStr = redisTemplate.opsForValue().get("QUANZI_PUBLISH_RECOMMEND_" + user.getId());
+            if (StringUtils.isNotEmpty(pidStr)) {
+                String[] pidArr = StringUtils.split(pidStr, ",");
+                /*分页的方式取出数据*/
+                int startIndex = (pageNum - 1) * pageSize;
+                if (startIndex < pidArr.length) {
+                    int endIndex = startIndex + pageSize - 1;
+                    if (endIndex >= pidArr.length) {
+                        endIndex = pidArr.length - 1;
+                    }
+                    List<Long> pidList =new ArrayList<>();
+                    for (int i = startIndex;i<=endIndex;i++){
+                        pidList.add(Long.valueOf(pidArr[i]));
+                    }
+
+                    /*查询推荐数据的详细信息*/
+                    pageInfo = quanZiApi.queryPublishByPid(pidList);
+                }
+            }else {
+                /*根据isRecommend 判断查询好友动态和推荐动态*/
+                pageInfo = quanZiApi.queryPublishList(user.getId(), pageNum, pageSize, isRecommend);
+            }
+        }else {
+            /*根据isRecommend 判断查询好友动态和推荐动态*/
+            pageInfo = quanZiApi.queryPublishList(user.getId(), pageNum, pageSize, isRecommend);
+        }
+
+
         /*封装返回结果*/
-        PageResult pageResult=new PageResult();
+        PageResult pageResult = new PageResult();
         pageResult.setItems(Collections.emptyList());
         pageResult.setPage(pageNum);
         pageResult.setPagesize(pageSize);
@@ -126,13 +163,13 @@ public class MovementsService {
         pageResult.setPages(0);//总页数暂无
 
         List<Publish> records = pageInfo.getRecords();
-        if (CollectionUtils.isEmpty(records)){
+        if (CollectionUtils.isEmpty(records)) {
             /*没有动态信息*/
             return pageResult;
         }
 
         /*对动态数据(动态表数据)处理*/
-        List<Movements> movementsList =new ArrayList<>();
+        List<Movements> movementsList = new ArrayList<>();
         List<Long> userIdsList = new ArrayList<>();
         for (Publish record : records) {
             /*id用于查询该动态用户的详细信息*/
@@ -148,15 +185,15 @@ public class MovementsService {
         /*对用户详细信息处理--每条动态有用户的详细信息*/
         List<UserInfo> userInfoList = userService.queryUserInfoByUserIdList(userIdsList);
         /*用户id对应的用户详细信息*/
-        Map<Long,UserInfo> userInfoMap=new HashMap<>();
+        Map<Long, UserInfo> userInfoMap = new HashMap<>();
         userInfoList.forEach(userInfo -> {
-            userInfoMap.put(userInfo.getUserId(),userInfo);
+            userInfoMap.put(userInfo.getUserId(), userInfo);
         });
 
         movementsList.forEach((movements -> {
-            Long publishUserId =movements.getUserId();
+            Long publishUserId = movements.getUserId();
             UserInfo userInfo = userInfoMap.get(publishUserId);
-            if (userInfo!=null){
+            if (userInfo != null) {
                 /*共性方法将UserInfo对movements进行填充*/
                 this.fillUserInfoToMovements(user, movements, userInfo);
             }
@@ -164,6 +201,7 @@ public class MovementsService {
 
         /*数据返回*/
         pageResult.setItems(movementsList);
+        log.info("好友动态:{}", pageResult);
         return pageResult;
 
     }
@@ -172,6 +210,7 @@ public class MovementsService {
      * 抽取通用方法,对数据进行填充
      * 主要处理publish(动态)数据填充
      * Publish------>Movements
+     *
      * @param record
      * @param movements
      */
@@ -191,6 +230,7 @@ public class MovementsService {
      * 抽取通用方法,对数据进行填充
      * 主要处理UserInfo(用户详细信息)数据填充
      * UserInfo------>Movements
+     *
      * @param user
      * @param movements
      * @param userInfo
@@ -200,25 +240,25 @@ public class MovementsService {
         movements.setAvatar(userInfo.getLogo());
         movements.setGender(userInfo.getSex().name().toLowerCase());
         movements.setNickname(userInfo.getNickName());
-        movements.setTags(StringUtils.split(userInfo.getTags(),","));
-        movements.setCommentCount(quanZiApi.queryCommentCount(movements.getId(),CommentTypeEnum.COMMENT.getCode()).intValue());//TODO 评论数暂无数据
+        movements.setTags(StringUtils.split(userInfo.getTags(), ","));
+        movements.setCommentCount(quanZiApi.queryCommentCount(movements.getId(), CommentTypeEnum.COMMENT.getCode()).intValue());//TODO 评论数暂无数据
         movements.setDistance("5.2公里");//TODO 距离暂无数据
 
-        movements.setHasLiked(redisTemplate.hasKey(QUANZI_LIKE_USER+user.getId()+"_"+movements.getId())?1:0); //TODO 是否点赞（1是，0否）
-        movements.setHasLoved(redisTemplate.hasKey(QUANZI_LOVE_USER+user.getId()+"_"+movements.getId())?1:0);//TODO 是否喜欢（1是，0否）
+        movements.setHasLiked(redisTemplate.hasKey(QUANZI_LIKE_USER + user.getId() + "_" + movements.getId()) ? 1 : 0); //TODO 是否点赞（1是，0否）
+        movements.setHasLoved(redisTemplate.hasKey(QUANZI_LOVE_USER + user.getId() + "_" + movements.getId()) ? 1 : 0);//TODO 是否喜欢（1是，0否）
 
         String likeCount = redisTemplate.opsForValue().get(QUANZI_LIKE_COUNT + movements.getId());// 点赞数量
-        if(StringUtils.isEmpty(likeCount)){
+        if (StringUtils.isEmpty(likeCount)) {
             movements.setLikeCount(0);  //点赞数
-        }else {
+        } else {
             movements.setLikeCount(Integer.parseInt(likeCount));//点赞数
         }
 
 
         String loveCount = redisTemplate.opsForValue().get(QUANZI_LOVE_COUNT + movements.getId());// 喜欢数量
-        if(StringUtils.isEmpty(loveCount)){
+        if (StringUtils.isEmpty(loveCount)) {
             movements.setLoveCount(0);  //喜欢数
-        }else {
+        } else {
             movements.setLoveCount(Integer.parseInt(loveCount));//喜欢数
         }
         //movements.setLoveCount(1352); //TODO 喜欢数量--如上已完成
@@ -226,6 +266,7 @@ public class MovementsService {
 
     /**
      * 点赞
+     *
      * @param publishId
      * @return
      */
@@ -241,23 +282,23 @@ public class MovementsService {
                 publishId,
                 CommentTypeEnum.LIKE.getCode(), null);
 
-        Long likeCount=1L;
+        Long likeCount = 1L;
 
-        if (saveComment){
+        if (saveComment) {
             /*redis*/
-            String countKey=QUANZI_LIKE_COUNT+publishId;
-            if (!redisTemplate.hasKey(countKey)){
+            String countKey = QUANZI_LIKE_COUNT + publishId;
+            if (!redisTemplate.hasKey(countKey)) {
                 likeCount = quanZiApi.queryCommentCount(publishId, CommentTypeEnum.LIKE.getCode());
                 /*放入redis*/
-                redisTemplate.opsForValue().set(countKey,String.valueOf(likeCount));
+                redisTemplate.opsForValue().set(countKey, String.valueOf(likeCount));
 
-            }else {
+            } else {
                 /*如果有数据,那么进行自增*/
                 likeCount = redisTemplate.opsForValue().increment(countKey);
             }
 
             /*标识当前用户的点赞状态*/
-            redisTemplate.opsForValue().set(QUANZI_LIKE_USER+user.getId()+"_"+publishId,"1");
+            redisTemplate.opsForValue().set(QUANZI_LIKE_USER + user.getId() + "_" + publishId, "1");
         }
         return likeCount;
 
@@ -265,6 +306,7 @@ public class MovementsService {
 
     /**
      * 取消点赞
+     *
      * @param publishId
      * @return
      */
@@ -272,19 +314,19 @@ public class MovementsService {
         User user = UserThreadLocal.get();
 
         boolean removeComment = quanZiApi.removeComment(user.getId(), publishId, CommentTypeEnum.LIKE.getCode());
-        Long likeCount =0L;
-        String countKey=QUANZI_LIKE_COUNT+publishId;
+        Long likeCount = 0L;
+        String countKey = QUANZI_LIKE_COUNT + publishId;
         /*取消成功   点赞总数减1,   是否点赞 删除      ,如果没有删除成功(else),从redis获取之前的点赞数 返回*/
-        if (removeComment){
+        if (removeComment) {
             likeCount = redisTemplate.opsForValue().decrement(countKey);
-            redisTemplate.delete(QUANZI_LIKE_USER+user.getId()+"_"+publishId);
+            redisTemplate.delete(QUANZI_LIKE_USER + user.getId() + "_" + publishId);
 
-        }else{
+        } else {
             String c = redisTemplate.opsForValue().get(countKey);
-            if (StringUtils.isEmpty(c)){
-                likeCount=0L;
-            }else {
-                likeCount=Long.parseLong(c);
+            if (StringUtils.isEmpty(c)) {
+                likeCount = 0L;
+            } else {
+                likeCount = Long.parseLong(c);
             }
         }
         return likeCount;
@@ -293,6 +335,7 @@ public class MovementsService {
 
     /**
      * 动态喜欢
+     *
      * @param publishId
      * @return
      */
@@ -308,23 +351,23 @@ public class MovementsService {
                 publishId,
                 CommentTypeEnum.LOVE.getCode(), null);
 
-        Long loveCount=1L;
+        Long loveCount = 1L;
 
-        if (saveComment){
+        if (saveComment) {
             /*redis*/
-            String countKey=QUANZI_LOVE_COUNT+publishId;
-            if (!redisTemplate.hasKey(countKey)){
+            String countKey = QUANZI_LOVE_COUNT + publishId;
+            if (!redisTemplate.hasKey(countKey)) {
                 loveCount = quanZiApi.queryCommentCount(publishId, CommentTypeEnum.LOVE.getCode());
                 /*放入redis*/
-                redisTemplate.opsForValue().set(countKey,String.valueOf(loveCount));
+                redisTemplate.opsForValue().set(countKey, String.valueOf(loveCount));
 
-            }else {
+            } else {
                 /*如果有数据,那么进行自增*/
                 loveCount = redisTemplate.opsForValue().increment(countKey);
             }
 
             /*标识当前用户的点赞状态*/
-            redisTemplate.opsForValue().set(QUANZI_LOVE_USER+user.getId()+"_"+publishId,"1");
+            redisTemplate.opsForValue().set(QUANZI_LOVE_USER + user.getId() + "_" + publishId, "1");
         }
         return loveCount;
     }
@@ -332,6 +375,7 @@ public class MovementsService {
 
     /**
      * 动态取消喜欢
+     *
      * @param publishId
      * @return
      */
@@ -339,19 +383,19 @@ public class MovementsService {
         User user = UserThreadLocal.get();
 
         boolean removeComment = quanZiApi.removeComment(user.getId(), publishId, CommentTypeEnum.LOVE.getCode());
-        Long loveCount =0L;
-        String countKey=QUANZI_LOVE_COUNT+publishId;
+        Long loveCount = 0L;
+        String countKey = QUANZI_LOVE_COUNT + publishId;
         /*取消成功   喜欢总数减1,   是否点喜欢 删除      ,如果没有删除成功(else),从redis获取之前的喜欢数 返回*/
-        if (removeComment){
+        if (removeComment) {
             loveCount = redisTemplate.opsForValue().decrement(countKey);
-            redisTemplate.delete(QUANZI_LOVE_USER+user.getId()+"_"+publishId);
+            redisTemplate.delete(QUANZI_LOVE_USER + user.getId() + "_" + publishId);
 
-        }else{
+        } else {
             String c = redisTemplate.opsForValue().get(countKey);
-            if (StringUtils.isEmpty(c)){
-                loveCount=0L;
-            }else {
-                loveCount=Long.parseLong(c);
+            if (StringUtils.isEmpty(c)) {
+                loveCount = 0L;
+            } else {
+                loveCount = Long.parseLong(c);
             }
         }
         return loveCount;
@@ -359,6 +403,7 @@ public class MovementsService {
 
     /**
      * 查询单条动态方法
+     *
      * @param publishId
      * @return
      */
@@ -368,22 +413,22 @@ public class MovementsService {
          * 获取用户信息
          * 数据封装返回
          */
-         User user = UserThreadLocal.get();
+        User user = UserThreadLocal.get();
 
         Publish publish = quanZiApi.queryPublishById(publishId);
-        if (publish==null){
+        if (publish == null) {
             return null;
         }
         UserInfo userInfo = userService.queryUserInfoByUserId(publish.getUserId());
-        if (userInfo==null){
+        if (userInfo == null) {
             return null;
         }
 
         /*数据封装*/
         Movements movements = new Movements();
         /*注意数据封装*/  // <- TODO Movements封装过程
-        this.fillPublishToMovements(publish,movements);
-        this.fillUserInfoToMovements(user,movements,userInfo);
+        this.fillPublishToMovements(publish, movements);
+        this.fillUserInfoToMovements(user, movements, userInfo);
         return movements;
     }
 }

@@ -1,8 +1,12 @@
 package com.tanhua.server.controller;
 
+import com.tanhua.server.enums.SendMessageTypeEnum;
 import com.tanhua.server.service.MovementsService;
+import com.tanhua.server.service.QuanziMQService;
+import com.tanhua.server.utils.UserThreadLocal;
 import com.tanhua.server.vo.Movements;
 import com.tanhua.server.vo.PageResult;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +23,9 @@ public class MovementsController {
 
     @Autowired
     private MovementsService movementsService;
+
+    @Autowired
+    private QuanziMQService quanziMQService;
 
 
     /**
@@ -40,8 +47,10 @@ public class MovementsController {
                                        @RequestParam(value = "imageContent", required = false) MultipartFile[] multipartFiles){
 
         try {
-            boolean isSave = movementsService.save(textContent,location,longitude,latitude,multipartFiles);
-            if (isSave){
+            String publishId = movementsService.save(textContent,location,longitude,latitude,multipartFiles);
+            if (StringUtils.isNotEmpty(publishId)){
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                quanziMQService.sendMessage(UserThreadLocal.get(),SendMessageTypeEnum.PUBLISH.getValue(),publishId);
                 return ResponseEntity.ok(null);
             }
         }catch (Exception e){
@@ -104,6 +113,9 @@ public class MovementsController {
         try {
             Long likeCount = movementsService.likeComment(publishId);
             if (likeCount != null) {
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                quanziMQService.sendMessage(UserThreadLocal.get(),SendMessageTypeEnum.LIKE.getValue(),publishId);
+
                 return ResponseEntity.ok(likeCount);
             }
         } catch (Exception e) {
@@ -125,6 +137,8 @@ public class MovementsController {
 
         try {
             Long likeCount = movementsService.dislike(publishId);
+            /*发送消息,使用线程的方式,不会影响返回值的执行*/
+            quanziMQService.sendMessage(UserThreadLocal.get(),SendMessageTypeEnum.CANCEL_LIKE.getValue(),publishId);
             return ResponseEntity.ok(likeCount);
         }catch (Exception e){
             e.printStackTrace();
@@ -144,6 +158,8 @@ public class MovementsController {
         try {
             Long loveCount = movementsService.loveComment(publishId);
             if (loveCount != null) {
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                quanziMQService.sendMessage(UserThreadLocal.get(),SendMessageTypeEnum.LOVE.getValue(),publishId);
                 return ResponseEntity.ok(loveCount);
             }
         } catch (Exception e) {
@@ -165,6 +181,8 @@ public class MovementsController {
 
         try {
             Long loveCount = movementsService.disLove(publishId);
+            /*发送消息,使用线程的方式,不会影响返回值的执行*/
+            quanziMQService.sendMessage(UserThreadLocal.get(),SendMessageTypeEnum.CANCEL_LOVE.getValue(),publishId);
             return ResponseEntity.ok(loveCount);
         }catch (Exception e){
             e.printStackTrace();
@@ -188,7 +206,8 @@ public class MovementsController {
         try {
             Movements movements = movementsService.queryById(publishId);
             if (movements!=null){
-
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                quanziMQService.sendMessage(UserThreadLocal.get(),SendMessageTypeEnum.WATCH_PUBLISH.getValue(),publishId);
                 return ResponseEntity.ok(movements);
             }
         }catch (Exception e){

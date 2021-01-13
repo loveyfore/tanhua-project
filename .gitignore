@@ -18,3 +18,4 @@ mvnw
 mvnw.cmd
 tanhua-sso/src/main/resources/aliyun.properties
 tanhua-server/src/main/resources/aliyun.properties
+tanhua-sso/src/main/resources/huanxin.properties

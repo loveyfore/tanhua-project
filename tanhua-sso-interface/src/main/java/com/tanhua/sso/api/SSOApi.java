@@ -35,4 +35,19 @@ public interface SSOApi {
                                              String city,
                                              String education,
                                              Integer sex);
+
+    /**
+     * 添加联系人到环信-建立好友关系添加好友
+     * @param userId 当前用户id
+     * @param friendId 朋友用户id
+     * @return
+     */
+    Boolean addHuanXinContacts(Long userId,Long friendId);
+
+    /**
+     * 查询用户详细信息,以昵称模糊查询
+     * @param userIdList 用户id集合
+     * @param keyword 模糊查询字段
+     */
+    List<UserInfo> queryUserInfoLikeNickName(List<Long> userIdList,String keyword);
 }

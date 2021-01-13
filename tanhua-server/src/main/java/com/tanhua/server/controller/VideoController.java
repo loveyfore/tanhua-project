@@ -1,8 +1,12 @@
 package com.tanhua.server.controller;
 
+import com.tanhua.server.enums.SendMessageTypeEnum;
+import com.tanhua.server.service.VideoMQService;
 import com.tanhua.server.service.VideoService;
+import com.tanhua.server.utils.UserThreadLocal;
 import com.tanhua.server.vo.PageResult;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +27,9 @@ public class VideoController {
     @Autowired
     private VideoService videoService;
 
+    @Autowired
+    private VideoMQService videoMQService;
+
     /**
      * POST
      * 视频上传保存
@@ -35,8 +42,10 @@ public class VideoController {
     public ResponseEntity<Object> saveVideo(@RequestParam(value = "videoThumbnail",required = false)MultipartFile videoThumbnail,
                                             @RequestParam(value = "videoFile",required = false)MultipartFile videoFile){
         try {
-            Boolean saveVideo= videoService.saveVideo(videoThumbnail,videoFile);
-            if (saveVideo){
+            String videoId = videoService.saveVideo(videoThumbnail,videoFile);
+            if (StringUtils.isNotEmpty(videoId)){
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                videoMQService.sendMessage(UserThreadLocal.get(), SendMessageTypeEnum.PUBLISH.getValue(),videoId);
                 return ResponseEntity.ok(null);
             }
         } catch (Exception e) {
@@ -82,6 +91,8 @@ public class VideoController {
         try {
             Long likeCount=videoService.likeComment(videoId);
             if (likeCount!=null){
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                videoMQService.sendMessage(UserThreadLocal.get(), SendMessageTypeEnum.LIKE.getValue(),videoId);
                 return ResponseEntity.ok(null);
             }
         } catch (Exception e) {
@@ -104,6 +115,8 @@ public class VideoController {
         try {
             Long likeCount=videoService.disLikeComment(videoId);
             if (likeCount!=null){
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                videoMQService.sendMessage(UserThreadLocal.get(), SendMessageTypeEnum.CANCEL_LIKE.getValue(),videoId);
                 return ResponseEntity.ok(null);
             }
         } catch (Exception e) {
@@ -150,6 +163,8 @@ public class VideoController {
         try {
             Boolean saveComment=videoService.saveComments(videoId,params.get("comment"));
             if (saveComment){
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                videoMQService.sendMessage(UserThreadLocal.get(), SendMessageTypeEnum.COMMENT.getValue(),videoId);
                 return ResponseEntity.ok(null);
             }
         } catch (Exception e) {

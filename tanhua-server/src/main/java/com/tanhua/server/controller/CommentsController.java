@@ -1,6 +1,9 @@
 package com.tanhua.server.controller;
 
+import com.tanhua.server.enums.SendMessageTypeEnum;
 import com.tanhua.server.service.CommentsService;
+import com.tanhua.server.service.QuanziMQService;
+import com.tanhua.server.utils.UserThreadLocal;
 import com.tanhua.server.vo.PageResult;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +25,9 @@ public class CommentsController {
 
     @Autowired
     private CommentsService commentsService;
+
+    @Autowired
+    private QuanziMQService quanziMQService;
 
     /**
      * GET
@@ -58,6 +64,8 @@ public class CommentsController {
             String comment = params.get("comment");
             Boolean flag= commentsService.saveComments(publishId,comment);
             if (flag){
+                /*发送消息,使用线程的方式,不会影响返回值的执行*/
+                quanziMQService.sendMessage(UserThreadLocal.get(),SendMessageTypeEnum.COMMENT.getValue(),publishId);
                 return ResponseEntity.ok(null);
             }
         } catch (Exception e) {

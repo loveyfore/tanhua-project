@@ -62,6 +62,7 @@ public class VideoService {
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
 
+
     /**
      * 点赞次数
      */
@@ -83,7 +84,7 @@ public class VideoService {
      * @param videoFile 视频文件
      * @return
      */
-    public Boolean saveVideo(MultipartFile videoThumbnail, MultipartFile videoFile) {
+    public String saveVideo(MultipartFile videoThumbnail, MultipartFile videoFile) {
 
 
         /*获取用户信息*/
@@ -100,7 +101,7 @@ public class VideoService {
             /*保存视频封面*/
             PicUploadResult uploadResult = picUploadService.upload(videoThumbnail);
             if (!"done".equals(uploadResult.getStatus())){
-                return false;
+                return null;
             }
             /*oss图片路径*/
             video.setPicUrl(uploadResult.getName());
@@ -112,12 +113,12 @@ public class VideoService {
                                                             null);
             video.setVideoUrl(storePath.getFullPath());
             log.info("saveVideo:{}",video);
-            videoApi.saveVideo(video);
-            return true;
+
+            return videoApi.saveVideo(video);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return false;
+        return null;
     }
 
     /**
@@ -135,6 +136,32 @@ public class VideoService {
 
         User user = UserThreadLocal.get();
 
+        PageInfo<Video> pageInfo = new PageInfo<>();
+
+        String vidStr = redisTemplate.opsForValue().get("QUANZI_VIDEO_RECOMMEND_" + user.getId());
+        if (StringUtils.isNotEmpty(vidStr)) {
+            String[] vidArr = StringUtils.split(vidStr, ",");
+            /*分页的方式取出数据*/
+            int startIndex = (pageNum - 1) * pageSize;
+            if (startIndex < vidArr.length) {
+                int endIndex = startIndex + pageSize - 1;
+                if (endIndex >= vidArr.length) {
+                    endIndex = vidArr.length - 1;
+                }
+                List<Long> vidList = new ArrayList<>();
+                for (int i = startIndex; i <= endIndex; i++) {
+                    vidList.add(Long.valueOf(vidArr[i]));
+                }
+
+                pageInfo = videoApi.queryVideoByVid(vidList);
+            }
+        }else {
+            /*远程调用查询*/
+            pageInfo = videoApi.queryVideoList(pageNum, pageSize);
+        }
+
+
+        /*返回数据初始化*/
         PageResult pageResult = new PageResult();
         pageResult.setCounts(0);/*总条数,暂无*/
         pageResult.setPage(pageNum);
@@ -142,7 +169,6 @@ public class VideoService {
         pageResult.setPagesize(pageSize);
 
 
-        PageInfo<Video> pageInfo = videoApi.queryVideoList(pageNum, pageSize);
         List<Video> records = pageInfo.getRecords();
         if (CollectionUtils.isEmpty(records)){
             return pageResult;
@@ -171,13 +197,14 @@ public class VideoService {
             UserInfo userInfo = userInfoMap.get(record.getUserId());
 
             VideoVo videoVo = new VideoVo();
-            videoVo.setAvatar(userInfo.getLogo());
             videoVo.setNickname(userInfo.getNickName());
             videoVo.setUserId(userInfo.getUserId());
             videoVo.setSignature("测试数据---(签名)");
             videoVo.setId(record.getId().toHexString());
 
-            /*获取服务器Url,填充拼接数据--视频和封面*/
+            /*获取服务器Url,填充拼接数据--头像,视频,封面*/
+            videoVo.fillAvatar(aliyunConfig.getUrlPrefix(),userInfo.getLogo());
+            log.info("fillAvatarURL:{}",videoVo.getAvatar());
             videoVo.fillVideoUrl(fdfsWebServer.getWebServerUrl(),record.getVideoUrl());
             log.info("fillVideoURL:{}",videoVo.getVideoUrl());
             videoVo.fillCover(aliyunConfig.getUrlPrefix(),record.getPicUrl());

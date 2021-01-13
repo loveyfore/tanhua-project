@@ -30,6 +30,7 @@ public class PageResult {
     private Integer page = 0;
     /**
      * 列表
+     * Collections.emptyList();为空列表进行填充   -->[]
      */
     private List<?> items = Collections.emptyList();
 
