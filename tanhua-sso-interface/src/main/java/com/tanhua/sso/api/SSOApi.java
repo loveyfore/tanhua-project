@@ -36,6 +36,14 @@ public interface SSOApi {
                                              String education,
                                              Integer sex);
 
+
+    /**
+     * 保存更新用户资料
+     * @param userInfo
+     * @return
+     */
+    Boolean updateUserInfo(UserInfo userInfo);
+
     /**
      * 添加联系人到环信-建立好友关系添加好友
      * @param userId 当前用户id
@@ -50,4 +58,13 @@ public interface SSOApi {
      * @param keyword 模糊查询字段
      */
     List<UserInfo> queryUserInfoLikeNickName(List<Long> userIdList,String keyword);
+
+    /**
+     * 向指定用户发送消息
+     * @param userId 指定用户id
+     * @param message 消息内容
+     * @param type 消息类型 消息类型；txt:文本消息，img：图片消息，loc：位置消息，audio：语音消息，video：视频消息，file：文件消息
+     * @return
+     */
+    Boolean sendMessageByUserId(Long userId, String message, String type);
 }

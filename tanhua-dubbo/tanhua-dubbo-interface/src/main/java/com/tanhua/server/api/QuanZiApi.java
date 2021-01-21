@@ -3,6 +3,7 @@ package com.tanhua.server.api;
 import com.tanhua.server.pojo.Comment;
 import com.tanhua.server.pojo.Publish;
 import com.tanhua.server.vo.PageInfo;
+import org.bson.types.ObjectId;
 
 import java.util.List;
 
@@ -96,4 +97,29 @@ public interface QuanZiApi {
      * @return
      */
     PageInfo<Publish> queryPublishByPid(List<Long> pidList);
+
+    /**
+     * 查询相册表,也就是查询用户自己的动态
+     * @param userId
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    PageInfo<Publish> queryAlbumList(Long userId, Integer pageNum, Integer pageSize);
+
+    /**
+     * 根据用户id查询相册表数据总记录数
+     * @param userId 用户id
+     * @return
+     */
+    Long queryAlbumCount(Long userId);
+
+    /**
+     * 根据动态id集合,查询动态数据
+     * @param publishIdList
+     * @return
+     */
+    List<Publish> queryPublishByIdList(List<ObjectId> publishIdList);
+
+
 }

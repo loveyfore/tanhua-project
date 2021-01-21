@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TodayBest {
 
+    /**
+     * 当前推荐用户id
+     */
     private Integer id;
     /**
      * 头像

@@ -142,7 +142,7 @@ public class VideoService {
         if (StringUtils.isNotEmpty(vidStr)) {
             String[] vidArr = StringUtils.split(vidStr, ",");
             /*分页的方式取出数据*/
-            int startIndex = (pageNum - 1) * pageSize;
+            int startIndex = (pageNum - 1) * pageSize; //0,1  2,3  4,5  6,7
             if (startIndex < vidArr.length) {
                 int endIndex = startIndex + pageSize - 1;
                 if (endIndex >= vidArr.length) {

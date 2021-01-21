@@ -1,17 +1,21 @@
 package com.tanhua.server.controller;
 
+import com.alibaba.dubbo.common.utils.CollectionUtils;
 import com.tanhua.server.enums.SendMessageTypeEnum;
 import com.tanhua.server.service.MovementsService;
 import com.tanhua.server.service.QuanziMQService;
 import com.tanhua.server.utils.UserThreadLocal;
 import com.tanhua.server.vo.Movements;
 import com.tanhua.server.vo.PageResult;
+import com.tanhua.server.vo.VisitorsVo;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 /**
  * @Author Administrator
@@ -26,7 +30,6 @@ public class MovementsController {
 
     @Autowired
     private QuanziMQService quanziMQService;
-
 
     /**
      * POST
@@ -211,6 +214,51 @@ public class MovementsController {
                 return ResponseEntity.ok(movements);
             }
         }catch (Exception e){
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+
+    /**
+     * GET
+     * 谁看过我-访客列表查询
+     * /movements/visitors
+     * @return
+     */
+    @GetMapping("visitors")
+    public ResponseEntity<Object> queryVisitorsList(){
+        try {
+            List<VisitorsVo> visitorsVoList = movementsService.queryVisitorsList();
+            if (CollectionUtils.isNotEmpty(visitorsVoList)){
+                return ResponseEntity.ok(visitorsVoList);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+
+    /**
+     * GET
+     * 获取指定用户自己所有的动态,查询相册表
+     * /movements/all
+     * @param pageNum 页
+     * @param pageSize 条
+     * @param userId 用户id
+     * @return
+     */
+    @GetMapping("/all")
+    public ResponseEntity<Object> queryAlbumList(@RequestParam(value = "page",defaultValue = "1")Integer pageNum,
+                                                 @RequestParam(value = "pagesize",defaultValue = "10")Integer pageSize,
+                                                 @RequestParam("userId")Long userId){
+        try {
+            PageResult pageResult = movementsService.queryAlbumList(userId,pageNum,pageSize);
+            if (pageNum!=null){
+                return ResponseEntity.ok(pageResult);
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

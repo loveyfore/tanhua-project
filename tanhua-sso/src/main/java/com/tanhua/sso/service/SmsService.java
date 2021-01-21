@@ -101,11 +101,45 @@ public class SmsService {
         int code=123456;
 
         if (!flag){
-            new Result(false,"短信发送失败!",null);
+            return new Result(false,"短信发送失败!",null);
         }
 
         /*验证码存入redis,以便登录时校验,5分钟内有效--方便测试60秒*/
         redisTemplate.opsForValue().set("LOGIN_CODE_"+phone,String.valueOf(code), Duration.ofSeconds(60));
+
+        /*短信发送成功*/
+        return new Result(true,"OK",null);
+    }
+
+    /**
+     * 发送验证码
+     * 方法重载,传如redis中获取数据的key
+     * @param phone
+     * @return
+     */
+    public Result sendCode(String phone,String redisKeyPrefix){
+        /**
+         * 处理短信业务
+         * 6位数短信验证码
+         * 使用平台发送短信
+         * 储存redis,登录校验时使用
+         *
+         */
+
+        //int code = RandomUtils.nextInt(100000, 999999);
+
+        //Boolean flag = this.sendSMSYunzhixun(phone, String.valueOf(code));
+
+        //TODO 方便测试暂时写死变量测试
+        boolean flag =true;
+        int code=123456;
+
+        if (!flag){
+            return new Result(false,"短信发送失败!",null);
+        }
+
+        /*验证码存入redis,以便登录时校验,5分钟内有效--方便测试60秒*/
+        redisTemplate.opsForValue().set(redisKeyPrefix+phone,String.valueOf(code), Duration.ofSeconds(60));
 
         /*短信发送成功*/
         return new Result(true,"OK",null);

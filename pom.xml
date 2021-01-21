@@ -14,6 +14,7 @@
         <module>tanhua-dubbo</module>
         <module>tanhua-sso-interface</module>
         <module>tanhua-recommend</module>
+        <module>tanhua-elasticsearch</module>
     </modules>
 
     <parent>

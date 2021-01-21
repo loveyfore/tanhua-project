@@ -1,5 +1,6 @@
 package com.tanhua.server.api;
 
+import com.alibaba.dubbo.common.utils.CollectionUtils;
 import com.alibaba.dubbo.config.annotation.Service;
 import com.tanhua.server.pojo.*;
 import com.tanhua.server.service.IDService;
@@ -14,6 +15,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -336,5 +338,61 @@ public class QuanZiApiImpl implements QuanZiApi {
         pageInfo.setRecords(mongoTemplate.find(query,Publish.class));
 
         return pageInfo;
+    }
+
+    /**
+     * 查询相册表,也就是查询用户自己的动态
+     * @param userId
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    @Override
+    public PageInfo<Publish> queryAlbumList(Long userId, Integer pageNum, Integer pageSize) {
+
+        PageInfo<Publish> pageInfo = new PageInfo<>();
+        pageInfo.setPageNum(pageNum);
+        pageInfo.setPageSize(pageSize);
+        pageInfo.setTotal(this.queryAlbumCount(userId).intValue());
+
+        PageRequest pageRequest =PageRequest.of(pageNum-1,pageSize,Sort.by(Sort.Order.desc("created")));
+        Query query=new Query().with(pageRequest);
+        List<Album> albumList = mongoTemplate.find(query, Album.class, "quanzi_album_" + userId);
+
+        if (CollectionUtils.isEmpty(albumList)){
+            /*查询为空*/
+            return pageInfo;
+        }
+
+        List<ObjectId> publishIdList = new ArrayList<>();
+        for (Album album : albumList) {
+            publishIdList.add(album.getPublishId());
+        }
+
+        pageInfo.setRecords(this.queryPublishByIdList(publishIdList));
+
+
+        return pageInfo;
+    }
+
+    /**
+     * 根据用户id,查询用户相册表总记录数
+     * @param userId 用户id
+     * @return
+     */
+    @Override
+    public Long queryAlbumCount(Long userId) {
+        return mongoTemplate.count(new Query(),Album.class,"quanzi_album_"+userId);
+    }
+
+    /**
+     * 根据动态id集合,查询动态数据
+     * @param publishIdList
+     * @return
+     */
+    @Override
+    public List<Publish> queryPublishByIdList(List<ObjectId> publishIdList) {
+
+        return mongoTemplate.find(new Query(Criteria.where("id").in(publishIdList)),Publish.class);
     }
 }

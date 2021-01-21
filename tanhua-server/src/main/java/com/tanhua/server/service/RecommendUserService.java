@@ -41,4 +41,13 @@ public class RecommendUserService {
         return recommendUserApi.queryPageInfo(userId,pageNum,pageSize);
     }
 
+    /**
+     * 根据 id查询用户的缘分值
+     * @param userId 当前用户id
+     * @param recommendUserId 被推荐,或者佳人用户id
+     * @return
+     */
+    public RecommendUser querySocreByUserId(Long userId, Long recommendUserId) {
+        return recommendUserApi.querySocreByUserId(userId,recommendUserId);
+    }
 }

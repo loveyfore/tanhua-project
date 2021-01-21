@@ -4,8 +4,10 @@ import com.alibaba.dubbo.common.utils.CollectionUtils;
 import com.alibaba.dubbo.common.utils.Log;
 import com.alibaba.dubbo.config.annotation.Reference;
 import com.tanhua.server.api.QuanZiApi;
+import com.tanhua.server.api.VisitorsApi;
 import com.tanhua.server.config.AliyunConfig;
 import com.tanhua.server.pojo.Publish;
+import com.tanhua.server.pojo.Visitors;
 import com.tanhua.server.utils.RelativeDateFormat;
 import com.tanhua.server.utils.UserThreadLocal;
 import com.tanhua.server.vo.*;
@@ -43,6 +45,9 @@ public class MovementsService {
 
     @Autowired
     private RedisTemplate<String, String> redisTemplate;
+
+    @Reference(version = "1.0.0")
+    private VisitorsApi visitorsApi;
 
 
     /**
@@ -120,7 +125,7 @@ public class MovementsService {
         //查询当前的登录用户信息
         User user = UserThreadLocal.get();
 
-        PageInfo<Publish> pageInfo =new PageInfo<>();
+        PageInfo<Publish> pageInfo = new PageInfo<>();
 
 
         /*从redis中获取spark运算结果,没有的话还是远程调用*/
@@ -130,25 +135,25 @@ public class MovementsService {
             if (StringUtils.isNotEmpty(pidStr)) {
                 String[] pidArr = StringUtils.split(pidStr, ",");
                 /*分页的方式取出数据*/
-                int startIndex = (pageNum - 1) * pageSize;
+                int startIndex = (pageNum - 1) * pageSize;//0,1  2,3  4,5  6,7
                 if (startIndex < pidArr.length) {
                     int endIndex = startIndex + pageSize - 1;
                     if (endIndex >= pidArr.length) {
                         endIndex = pidArr.length - 1;
                     }
-                    List<Long> pidList =new ArrayList<>();
-                    for (int i = startIndex;i<=endIndex;i++){
+                    List<Long> pidList = new ArrayList<>();
+                    for (int i = startIndex; i <= endIndex; i++) {
                         pidList.add(Long.valueOf(pidArr[i]));
                     }
 
                     /*查询推荐数据的详细信息*/
                     pageInfo = quanZiApi.queryPublishByPid(pidList);
                 }
-            }else {
+            } else {
                 /*根据isRecommend 判断查询好友动态和推荐动态*/
                 pageInfo = quanZiApi.queryPublishList(user.getId(), pageNum, pageSize, isRecommend);
             }
-        }else {
+        } else {
             /*根据isRecommend 判断查询好友动态和推荐动态*/
             pageInfo = quanZiApi.queryPublishList(user.getId(), pageNum, pageSize, isRecommend);
         }
@@ -430,6 +435,128 @@ public class MovementsService {
         this.fillPublishToMovements(publish, movements);
         this.fillUserInfoToMovements(user, movements, userInfo);
         return movements;
+    }
+
+    /**
+     * 查询访客列表
+     *
+     * @return
+     */
+    public List<VisitorsVo> queryVisitorsList() {
+        /**
+         * 获取登录用户
+         * 判断是否有上次查询访客的时间,有-按照时间查询,没有-按照分页查询 redis
+         * 根据当前用户id,查询该用户的访客信息
+         * 数据封装
+         */
+
+        User user = UserThreadLocal.get();
+
+        /**
+         * 获取上次访问游客列表的时间,作为按时间查询记录的条件,查询该时间以后来的访客信息
+         * 而且,在用户浏览访客列表的时候,会将时间生成并添加到redis中   // TODO 功能已经实现
+         *
+         */
+        String visitorsTime = redisTemplate.opsForValue().get("VISITORS_TIME_" + user.getId());
+
+        List<Visitors> visitorsList = new ArrayList<>();
+        if (StringUtils.isNotEmpty(visitorsTime)) {
+            /*按时间查询*/
+            visitorsList = visitorsApi.topVisitor(user.getId(), Long.valueOf(visitorsTime));
+
+        } else {
+            /*分页查询*/
+            visitorsList = visitorsApi.topVisitor(user.getId(), 5);
+        }
+
+        if (CollectionUtils.isEmpty(visitorsList)) {
+            /*返回空集合  []*/
+            return Collections.emptyList();
+        }
+
+        List<Long> userIdList = new ArrayList<>();
+        for (Visitors visitors : visitorsList) {
+            userIdList.add(visitors.getVisitorUserId());
+        }
+
+        List<UserInfo> userInfoList = userService.queryUserInfoByUserIdList(userIdList);
+        Map<Long,UserInfo> userInfoMap =new HashMap<>();
+        for (UserInfo userInfo : userInfoList) {
+            userInfoMap.put(userInfo.getUserId(),userInfo);
+        }
+
+        List<VisitorsVo> visitorsVoList =new ArrayList<>();
+
+        for (Visitors visitors : visitorsList) {
+            UserInfo userInfo = userInfoMap.get(visitors.getVisitorUserId());
+
+            VisitorsVo visitorsVo = new VisitorsVo();
+            visitorsVo.setAge(userInfo.getAge());
+            visitorsVo.setAvatar(userInfo.getLogo());
+            visitorsVo.setFateValue(visitors.getScore().intValue());
+            visitorsVo.setGender(userInfo.getSex().name().toLowerCase());  /*枚举转小写*/
+            visitorsVo.setId(userInfo.getUserId());
+            visitorsVo.setNickname(userInfo.getNickName());
+            visitorsVo.setTags(StringUtils.split(userInfo.getTags(),","));
+
+            visitorsVoList.add(visitorsVo);
+        }
+
+        return visitorsVoList;
+    }
+
+    /**
+     * 根据用户查询自己动态,相册表
+     * @param userId
+     * @param pageNum
+     * @param pageSize
+     * @return
+     */
+    public PageResult queryAlbumList(Long userId, Integer pageNum, Integer pageSize) {
+
+        User user = UserThreadLocal.get();
+
+        PageInfo<Publish> pageInfo = quanZiApi.queryAlbumList(userId,pageNum,pageSize);
+        PageResult pageResult = new PageResult();
+        pageResult.setCounts(pageInfo.getTotal());
+        pageResult.setPage(pageNum);
+        pageResult.setPages(0);/*总页数暂无*/
+        pageResult.setPagesize(pageSize);
+
+        List<Publish> records = pageInfo.getRecords();
+        if (CollectionUtils.isEmpty(records)){
+            /*数据为空*/
+            return pageResult;
+        }
+
+        List<Long> userIdList=new ArrayList<>();
+        for (Publish record : records) {
+            if (!userIdList.contains(record.getUserId())){
+                userIdList.add(record.getUserId());
+            }
+        }
+
+        List<UserInfo> userInfoList = userService.queryUserInfoByUserIdList(userIdList);
+        Map<Long,UserInfo> userInfoMap =new HashMap<>();
+        for (UserInfo userInfo : userInfoList) {
+            userInfoMap.put(userInfo.getUserId(),userInfo);
+        }
+
+        List<Movements> movementsList =new ArrayList<>();
+        for (Publish record : records) {
+            UserInfo userInfo = userInfoMap.get(record.getUserId());
+
+            Movements movements = new Movements();
+
+            /*调用对movements数据进行封装*/
+            this.fillPublishToMovements(record,movements);
+            this.fillUserInfoToMovements(user,movements,userInfo);
+
+            movementsList.add(movements);
+        }
+
+        pageResult.setItems(movementsList);
+        return pageResult;
     }
 }
 

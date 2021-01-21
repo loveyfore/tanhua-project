@@ -169,7 +169,7 @@ public class UserService {
         resultMap.put("isNew",isNew);
 
         /*为不影响登录,使用多线程解决登录成功日志消息的发送*/
-        threadService.sendMQ(user);
+        //threadService.sendMQ(user);
 
 
 
@@ -320,5 +320,19 @@ public class UserService {
             userInfoMapper.updateById(userInfo);
         }
         return true;
+    }
+
+    /**
+     * 更新用户手机号
+     * @param userId
+     * @param phone
+     * @return
+     */
+    public Boolean updatePhoneCode(Long userId, String phone) {
+        User user = new User();
+        /*这里,mybatis字段有值才做更新,无值不做操作*/
+        user.setId(userId);
+        user.setMobile(phone);
+        return userMapper.updateById(user)>0;
     }
 }

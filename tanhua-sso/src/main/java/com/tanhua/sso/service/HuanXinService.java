@@ -13,6 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * @Author Administrator
  * @create 2021/1/9 20:04
@@ -99,5 +103,54 @@ public class HuanXinService {
         return responseEntity.getStatusCode().is2xxSuccessful();
 
 
+    }
+
+    /**
+     * 环信向指定用户发送消息
+     * POST	//{org_name}/{app_name}/messages
+     * @param userId
+     * @param message
+     * @param type
+     * @return
+     */
+    public Boolean sendMessageByUserId(Long userId, String message, String type) {
+        /*拼接环信token请求路径*/
+        String targetUrl = huanXinConfig.getUrl()+huanXinConfig.getOrgName()+"/"
+                +huanXinConfig.getAppName()+"/messages";
+
+        /*获取管理员权限*/
+        String token = huanXinTokenService.getToken();
+        /*封装请求头*/
+        HttpHeaders httpHeaders=new HttpHeaders();
+        httpHeaders.add("Content-Type","application/json");
+        httpHeaders.add("Authorization","Bearer "+token);
+
+        /*封装数据*/
+
+        /*curl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Authorization: Bearer YWMtP5n9zvOQEei7KclxPqJTkgAAAAAAAAAAAAAAAAAAAAGL4CTw6XgR6LaXXVmNX4QCAgMAAAFnXcBpfQBPGgDC09w5IdrfqG_H8_F53VLVTG0_82GXyEF8ZdMCt9-UpQ'
+         -d '{"target_type": "users","target": ["user2","user3"],"msg": {"type": "txt","msg": "testmessage"},"from": "user1"}' 'http://a1.easemob.com/easemob-demo/testapp/messages'*/
+        Map<String,Object> msg = new HashMap<>();
+        msg.put("target_type","users");
+        msg.put("target", Arrays.asList(userId));
+
+        Map<String,String> msgMap = new HashMap<>();
+        msgMap.put("msg",message);
+        msgMap.put("type",type);
+
+        msg.put("msg",msgMap);
+
+        try {
+            HttpEntity<String> httpEntity =new HttpEntity<>(OBJECT_MAPPER.writeValueAsString(msg),httpHeaders);
+
+            /*发送post请求*/
+            ResponseEntity<String> responseEntity = restTemplate.postForEntity(targetUrl, httpEntity, String.class);
+
+              return responseEntity.getStatusCode().is2xxSuccessful();/*请求成功 200OK*/
+
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            log.info("sendMessageError:UserID:{},Message:{},Type:{}",userId,message,type);
+        }
+        return false;
     }
 }

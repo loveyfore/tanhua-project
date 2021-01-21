@@ -65,4 +65,22 @@ public class RecommendUserApiImpl implements RecommendUserApi {
         /*封装返回*/
         return new PageInfo<>(0,pageNum,pageSize,recommendUserList);
     }
+
+    /**
+     * 根据 id查询用户的缘分值
+     * @param userId 当前用户id
+     * @param recommendUserId 被推荐,或者佳人用户id
+     * @return
+     */
+    @Override
+    public RecommendUser querySocreByUserId(Long userId, Long recommendUserId) {
+        if (userId==null&& recommendUserId==null){
+            return null;
+        }
+
+        Query query=Query.query(Criteria
+                .where("toUserId").is(userId)
+                .and("userId").is(recommendUserId)).limit(1);
+        return mongoTemplate.findOne(query,RecommendUser.class);
+    }
 }
